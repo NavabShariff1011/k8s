@@ -1,0 +1,87 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: mainnet
+  region: eu-central-1
+  version: "1.32"
+
+vpc:
+  id: vpc-0c50b7af4cd02666b
+  cidr: "192.168.0.0/16"
+  clusterEndpoints:
+    publicAccess: true
+    privateAccess: true
+  subnets:
+    private:
+      private-a:
+        id: subnet-0300125762b735ea3
+      private-b:
+        id: subnet-01fce634def6ae2c5
+      private-c:
+        id: subnet-0db9c50c44c44c65c  
+    public:
+      public-a:
+        id: subnet-078c4420dd1a0ee1b
+      public-b:
+        id: subnet-070c6ac3d537080fe
+      public-c:
+        id: subnet-03e33e8126e350e03
+managedNodeGroups:
+  - name: private-node-group
+    instanceType: t3.large
+    desiredCapacity: 3
+    minSize: 3
+    maxSize: 6
+    privateNetworking: true
+    labels: { role: workers }
+    subnets:
+      - private-a
+      - private-b
+      - private-c
+    iam:
+      withAddonPolicies:
+        ebs: true
+        efs: true
+
+cloudWatch:
+  clusterLogging:
+    enableTypes: ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+    logRetentionInDays: 3
+
+iam:
+  withOIDC: true
+  serviceAccounts:
+    - metadata:
+        name: mainnet-ebs-efs-csi-drivers
+        namespace: kube-system
+      wellKnownPolicies:
+        ebsCSIController: true
+        efsCSIController: true
+      roleName: mainnet-ebs-efs-csi-drivers
+    - metadata:
+        name: mainnet-ebs-csi-controller-sa
+        namespace: kube-system
+      wellKnownPolicies:
+        ebsCSIController: true
+      roleName: mainnet-ebs-csi-controller
+    - metadata:
+        name: mainnet-efs-csi-controller-sa
+        namespace: kube-system
+      wellKnownPolicies:
+        efsCSIController: true
+      roleName: mainnet-efs-csi-controller
+
+addons:
+  - name: vpc-cni
+    version: latest
+    attachPolicyARNs:
+      - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+  - name: coredns
+    version: latest
+  - name: kube-proxy
+    version: latest
+  - name: aws-ebs-csi-driver
+    version: latest
+  - name: eks-pod-identity-agent  # <-- Added Pod Identity Addon
+    version: latest
